@@ -18,7 +18,14 @@ _start:
         int $0x10           # Call BIOS interrupt 0x10 to print the character
         loop 1b             # Loop back to label 1 if CX is not zero (decrements CX)
 
-        call write_0x       # write "0x"
+# write "0x"
+        movb $'0, %al
+        movb $0x0E, %ah     # Set AH to 0x0E for BIOS Teletype output
+        int $0x10           # Call BIOS interrupt 0x10 to print the character
+        
+        movb $'x, %al
+        movb $0x0E, %ah     # Set AH to 0x0E for BIOS Teletype output
+        int $0x10           # Call BIOS interrupt 0x10 to print the character
 # probe menmory call BIOS interrupt 0x15 to set AX = 0xE801
         movw $0xE801, %ax
         int $0x15
@@ -43,89 +50,9 @@ _start:
         movb $0x0E, %ah
         int $0x10
         loop 1b 
-
-        call change_line
-
-do_e820:
-        # ax
-        xor %ebx, %ebx              # ebx must be 0 to start
-        movl $0x534D4150, %edx      # Place "SMAP" into edx
-        movl $0xE820, %eax
-        movl $24, %ecx              # ask for 24 bytes again
-        int $0x15
-        cmp $0x534D4150, %eax
-        ja error
-        jb error
-
-        call print_address
-        call add_address_len
-        call print_address
-        call print_address_type
-        
-        call change_line
-repeat_e820:
-        addw $24, %di
-        movl $0xE820, %eax
-        movl $24, %ecx              # ask for 24 bytes again
-
-        int $0x15
-        cmp $0x534D4150, %eax
-        ja error
-        jb error
-
-        call print_address
-        call add_address_len
-        call print_address
-        call print_address_type
-
         jmp end
 
 
-print_address:
-        call write_0x
-        movw %es:6(%di), %ax          # load the 2 bytes at ES:DI into %ax
-        call print_2byte_in_ax
-        movw %es:4(%di), %ax          # load the 2 bytes at ES:DI into %ax
-        call print_2byte_in_ax
-        movw %es:2(%di), %ax          # load the 2 bytes at ES:DI into %ax
-        call print_2byte_in_ax
-        movw %es:(%di), %ax          # load the 2 bytes at ES:DI into %ax
-        call print_2byte_in_ax
-        ret
-
-add_address_len:
-        movl %es:8(%di), %eax           # start address
-        addl %eax, %es:(%di)           # add len
-        ret
-
-print_address_type:
-        movw %es:16(%di), %ax          # load the 2 bytes at ES:DI into %ax
-        call print_2byte_in_ax
-        ret
-
-
-print_2byte_in_ax:
-        movw %ax, %cx
-        # print first 2 byte
-        shr $8, %ax
-        call print # write what is in AL to screen 
-        movw %cx, %ax
-        andb $0xFF, %ax
-        call print
-        ret
-
-
-write_0x: # write "0x"
-        movb $'0, %al
-        movb $0x0E, %ah     # Set AH to 0x0E for BIOS Teletype output
-        int $0x10           # Call BIOS interrupt 0x10 to print the character
-        
-        movb $'x, %al
-        movb $0x0E, %ah     # Set AH to 0x0E for BIOS Teletype output
-        int $0x10           # Call BIOS interrupt 0x10 to print the character
-        ret
-
-# this print function print 1 byte in AL in hex 
 print:
         pushw %dx               # Save dx register on the stack
         movb %al, %dl           # Copy the input value (AL) to DL
@@ -154,35 +81,30 @@ print:
         popw %dx                # Restore dx register from the stack
         ret                     # Return from the subroutine
 
-change_line:
-        movb $13, %al
-        movb $0x0E, %ah     
-        int $0x10           
+
+        # Get Memory Address Range and Status
+        movw $0xE820, %ax          # Function code for BIOS interrupt 0x15
+        movw $20, %cx              # Size of the buffer for memory map entry (20 bytes)
+        movw $0, %di               # Start address of the buffer to store memory map entries
+        movw $0x534D, %si          # Signature "SM" to identify the memory map (Note: The signature is 4 bytes, not 8)
+        xorl %edx, %edx            # Clear %edx (high 32 bits of %rdx, which will be used as an offset for the buffer)
+
+        int $0x15                   # Call BIOS interrupt 0x15 function 0xE820
+
+# Print Memory Address Range and Status
+.loop:
+        movl (%di), %eax        # Load memory map entry into %eax (4 bytes)
+        testl %eax, %eax        # Check if entry is valid (type != 0)
+        jz .end_loop            # If type is 0, exit the loop
+        call print_mem_entry    # Call subroutine to print memory map entry
+        add $20, %di            # Move to the next memory map entry
+        jmp .loop               # Repeat the loop
+.end_loop:
+
         
-        movb $10, %al
-        movb $0x0E, %ah     
-        int $0x10           
-        ret
         
-error:
-# print "err" if there is an error
-        leaw err_msg, %si       # load total address to si
-        movw err_msg_len, %cx # load len to cx
-1:      
-        lodsb               #load abyte from DS:SI to AL & increment SI
-        movb $0x0E, %ah     # Set AH to 0x0E for BIOS Teletype output
-        int $0x10           # Call BIOS interrupt 0x10 to print the character
-        loop 1b             # Loop back to label 1 if CX is not zero (decrements CX)
-        ret
-
-
-
 msg:    .asciz "MemOs: Weclome *** System memory is:"
 msg_len:.word . - msg
-
-err_msg:    .asciz "err"
-err_msg_len:.word . - err_msg
-
 
 munits: .asciz "KB"
 u_len:  .word . - munits
@@ -194,3 +116,4 @@ end:
 
 	.byte 0x55
 	.byte 0xAA 
+	
