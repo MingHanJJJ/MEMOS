@@ -54,32 +54,34 @@ do_e820:
         movl $24, %ecx              # ask for 24 bytes again
         int $0x15
         cmp $0x534D4150, %eax
-        ja error
-        jb error
+        jne end
 
-        call print_address
-        call add_address_len
-        call print_address
-        call print_address_type
-        
-        call change_line
+        call do_print
+
 repeat_e820:
-        addw $24, %di
         movl $0xE820, %eax
         movl $24, %ecx              # ask for 24 bytes again
 
         int $0x15
+        jc end
+        cmp $0, %ebx                # terminate if the ebx is reset to 0
+        je end
         cmp $0x534D4150, %eax
-        ja error
-        jb error
+        jne end
 
+        call do_print
+        jmp repeat_e820
+
+do_print:
+        call print_str1
         call print_address
         call add_address_len
+        call print_str2
         call print_address
+        call print_str3
         call print_address_type
-
-        jmp end
-
+        call change_line
+        ret
 
 print_address:
         call write_0x
@@ -100,20 +102,20 @@ add_address_len:
 
 print_address_type:
         movw %es:16(%di), %ax          # load the 2 bytes at ES:DI into %ax
-        call print_2byte_in_ax
+        cmp $1, %ax
+        je print_type1
+        cmp $2, %ax
+        je print_type2
         ret
-
 
 print_2byte_in_ax:
         movw %ax, %cx
-        # print first 2 byte
         shr $8, %ax
         call print # write what is in AL to screen 
         movw %cx, %ax
         andb $0xFF, %ax
         call print
         ret
-
 
 write_0x: # write "0x"
         movb $'0, %al
@@ -163,29 +165,78 @@ change_line:
         movb $0x0E, %ah     
         int $0x10           
         ret
-        
-error:
-# print "err" if there is an error
-        leaw err_msg, %si       # load total address to si
-        movw err_msg_len, %cx # load len to cx
+
+print_str1: 
+        leaw str_1, %si       
+        movw str1_len, %cx 
 1:      
-        lodsb               #load abyte from DS:SI to AL & increment SI
-        movb $0x0E, %ah     # Set AH to 0x0E for BIOS Teletype output
-        int $0x10           # Call BIOS interrupt 0x10 to print the character
-        loop 1b             # Loop back to label 1 if CX is not zero (decrements CX)
+        lodsb               
+        movb $0x0E, %ah     
+        int $0x10        
+        loop 1b             
         ret
 
+print_str2: 
+        leaw str_2, %si       
+        movw str2_len, %cx 
+1:      
+        lodsb               
+        movb $0x0E, %ah     
+        int $0x10        
+        loop 1b             
+        ret
 
+print_str3: 
+        leaw str_3, %si       
+        movw str3_len, %cx 
+1:      
+        lodsb               
+        movb $0x0E, %ah     
+        int $0x10        
+        loop 1b             
+        ret
+
+print_type1:
+        leaw type1, %si       
+        movw type1_len, %cx 
+1:      
+        lodsb               
+        movb $0x0E, %ah     
+        int $0x10        
+        loop 1b             
+        ret
+
+print_type2:
+        leaw type2, %si       
+        movw type2_len, %cx 
+1:      
+        lodsb               
+        movb $0x0E, %ah     
+        int $0x10        
+        loop 1b             
+        ret
 
 msg:    .asciz "MemOs: Weclome *** System memory is:"
 msg_len:.word . - msg
 
-err_msg:    .asciz "err"
-err_msg_len:.word . - err_msg
-
-
 munits: .asciz "KB"
 u_len:  .word . - munits
+
+str_1: .asciz "Address range ["
+str1_len:  .word . - str_1
+
+str_2: .asciz " : "
+str2_len:  .word . - str_2
+
+str_3: .asciz "] status: "
+str3_len:  .word . - str_3
+
+type1: .asciz "Free(1)"
+type1_len:  .word . - type1
+
+type2: .asciz "Reserved(2)"
+type2_len:  .word . - type2
+
 
 end:
         hlt
@@ -194,3 +245,4 @@ end:
 
 	.byte 0x55
 	.byte 0xAA 
+
