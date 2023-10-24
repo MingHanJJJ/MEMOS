@@ -1,0 +1,18 @@
+# CS552 Memos1
+	Ming-Han Hsieh,Zuizz Saeed, 2023/10/24
+	
+## Overview
+	This project is to go through the memory map and print out the menmory address in real mode.
+
+## implementation
+	1. Make files:
+		make 
+	2. use vncviewr:
+		cd /root/nvc/opt/TigerVNC/bin 
+		./vncviewer : 0
+
+	The makefiles includes: 
+		as --32 memos-1.s -o memos-1.o
+		ld -T memos-1.ld memos-1.o -o memos-1
+		qemu-system-i386 -hda memos-1 -m 8
+	Which -m 8 means that we set menmory size to 8MB.

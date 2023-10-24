@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/jeffh/OneDrive/Documents/GitHub/MEMOS",
-      "program": "c:/Users/jeffh/OneDrive/Documents/GitHub/MEMOS/build/Debug/outDebug",
+      "cwd": "c:/Users/jeffh/OneDrive/Documents/GitHub/MEMOS/Memos2",
+      "program": "c:/Users/jeffh/OneDrive/Documents/GitHub/MEMOS/Memos2/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

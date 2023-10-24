@@ -1,0 +1,28 @@
+# CS552 Memos2
+	Ming-Han Hsieh, Zuizz Saeed, 2023/10/24
+	U69341746
+
+## Overview
+	This project is to go through the memory map and print out the menmory address in protected mode.
+	As the number of cylinders in virtual disk we use Ming-Han's BU ID(U69341746), which is 46 + 10 = 56.
+	memos-2.img: cylinders = 56, sectors = 63, heads = 16
+	Each sector is 512bytes, and we have 56*16*63 sectors.
+
+## implementation
+	1. Make files:
+		make 
+	2. use vncviewr:
+		cd /root/nvc/opt/TigerVNC/bin 
+		./vncviewer : 0
+
+	The makefiles includes: 
+		as --32 -o memos-2.o memos-2.s
+		gcc -std=c99 -m32 -fno-stack-protector -fno-builtin -nostdinc -c kentry.c -o kentry.o
+		ld -m elf_i386 -T memos-2.ld memos-2.o kentry.o -o memos-2
+		mount /root/memos-2.img /mnt/C -text2 -o loop,offset=32256
+		cp memos-2 /mnt/C/boot/
+		cp menu.lst /mnt/C/boot/grub/
+		umount /mnt/C/
+		qemu-system-i386 -hda /root/memos-2.img -m 8
+	Which -m 8 means that we set menmory size to 8MB.
+	Note that we have to mount the virtual disk first before we want to change anything, then unmount after we finished.
